@@ -1,31 +1,27 @@
-;  Diablo 2 Hotkey Supplement
-;  Author: Andrew Closs
+;  Diablo 3 Hotkey Supplement
+;  Version: 1.1
+;  Author:  Andrew Closs
 ;  Description:
 ;     Automatically casts the selected skill at the cursor's location on
 ;     button press. Also plays sound notifications to track cooldowns and
 ;     durations. Effectively makes these mechanics in line with a modern ARPG.
-;     -  Press one button to cast a skill on the cursors location while having
+;     -  Press one button to cast a skill on the cursor's location while having
 ;        the skill binded to your default right-click remain unchanged, making
 ;        right-click function like another button
-;     -  Plays a sound effect after a specified amount of time
-;     e.g.  [Left-click] to cast Blessed Hammer,
-;           Press [W] to cast Teleport (and auto swap back to Concentration),
-;           [Left-click] to continue casting Blessed Hammer.
-;     e.g.  [Right-click] to cast Blizzard,
-;           Press [A] to:
-;              1) swap weapons
-;              2) cast Battle Orders (and to notify you when the buff ends)
-;              3) swap weapons back
-;           [Right-click] to continue casting Blizzard.
+;     -  make your left-click skill function as it would on right-click (above)
+;     -  Press one button to auto move to and attack anything under the cursor
+;     Using the templates documented below, you can configure the keys
+;     [QWERASDF] to handle additional actions that includes alerting you when
+;     buffs end or skills complete their cooldown. The available sounds
+;     packaged with it are from Mortal Kombat Arcade games.
 ;  Prerequisites:
-;     -  Requires AutoHotkey
+;     -  Requires AutoHotkey (run as administrator)
 ;     -  Keep skill hotkeys as [F1]-[F8]
 ;     -  Set default right-click skill to [F9]
-;     -  Set weapon swap to [F10]
-;     -  Unbind QWER and ASDF (move existing functions to other keys)
+;     -  Set default left-click skill to [F10] (optional)
+;     -  Set weapon swap to [F11]
+;     -  Unbind [QWERASDF] (move existing functions to other keys)
 ;  Notes:
-;     -  By default, the skills [A] and [S] swap the users weapon prior to and
-;        after casting (for oskills or +skills). This can be changed as desired
 ;     -  [Enter] pauses and unpauses the script (for typing in chat)
 
 ;  ============================================================================
@@ -48,12 +44,84 @@ mk_animality         = %A_ScriptDir%\Media\mk_animality.mp3
 mk_brutality         = %A_ScriptDir%\Media\mk_brutality.mp3
 
 ;  Optional, only if you want the skill to cast alongside a sound effect
-keyDelays :=   { "W" : 2000  ; after 2 seconds
-               , "E" : 18000 ; after 18 seconds
-               , "A" : 0 }   ; immediately
-soundMaps :=   { "W" : mk_toasty
-               , "E" : mk_testyourmight
-               , "A" : mk_playerselect }
+keyDelays := { }
+soundMaps := { }
+
+;  Examples
+; keyDelays :=   { "Q" : 2000  ; after 2 seconds
+;                , "W" : 18000 ; after 18 seconds
+;                , "A" : 0 }   ; immediately, to feel badass
+; soundMaps :=   { "Q" : mk_toasty
+;                , "W" : mk_testyourmight
+;                , "A" : mk_playerselect }
+
+;  ============================================================================
+;  Configuration templates
+;  ============================================================================
+
+;  The following three templates are to adjust the functionality of your keys:
+
+;  Example #1 makes your character automatically walk and attack anything under
+;  the cursor while the key is held.
+;     e.g. Good for single target skills like Berserk.
+
+;  Example #2 makes your skill automatically function as it would on
+;  right-click, where your caster goes stationary and casts on your cursor.
+;     e.g. This is to keep an aura on right-click to benefit the left-click
+;          skill, like Blessed Hammer with Concentration.
+
+;  Example #3 makes your character swap weapons, cast the skill and swap back.
+;     e.g. Good for buffing with extra oskills or Battle Orders.
+
+;  IMPORTANT!
+;  When copying and pasting these:
+;     Replace "[KEY]" with the desired key 
+;     e.g. "Q"
+;     Replace "[FUNCTION]" with the corresponding function key
+;     e.g. Q is "F1", R is "F4", A is "F5" ([QWERASDF] -> [F1-F8])
+
+;  #1
+;  Press [CTRL] + [KEY], hold [LMB], swap to defaultLeftClick
+; [KEY]::
+;    Send {[FUNCTION]}
+;    Send {Ctrl Down}
+;    while ( GetKeyState("[KEY]" , "P") )
+;       Click down left
+;    Click up left
+;    Send {CTRL Up}}
+;    Send %defaultLeftClick%
+;    if (keyDelays.hasKey("[KEY]") && soundMaps.hasKey("[KEY]"))
+;       QueueSound(keyDelays["[KEY]"], soundMaps["[KEY]"])
+; return
+
+;  #2
+;  Press [SHIFT} + [KEY], hold [LMB], swap to defaultLeftClick
+; [KEY]::
+;    Send {[FUNCTION]}
+;    Send {Shift Down}
+;    while ( GetKeyState("[KEY]" , "P") )
+;       Click down left
+;    Click up left
+;    Send {Shift Up}}
+;    Send %defaultLeftClick%
+;    if (keyDelays.hasKey("[KEY]") && soundMaps.hasKey("[KEY]"))
+;       QueueSound(keyDelays["[KEY]"], soundMaps["[KEY]"])
+; return
+
+;  #3
+;  Weapon swap, Press [KEY], click [RMB], wait for animation, weapon swap
+; [KEY]::
+;    if ( not GetKeyState("[KEY]" , "P") )
+;       Sleep, hotkeyDelay
+;       Send %defaultWeaponSwap%
+;       Send {[FUNCTION]}
+;       Click down right
+;       Click up right
+;       Sleep, weaponSwapDelay
+;       Send %defaultWeaponSwap%
+;       if (keyDelays.hasKey("[KEY]") && soundMaps.hasKey("[KEY]"))
+;          QueueSound(keyDelays["[KEY]"], soundMaps["[KEY]"])
+; return
 
 ;  ============================================================================
 ;  Initialization
@@ -64,7 +132,8 @@ SendMode Input             ; improves reliability
 #IfWinActive, Diablo II    ; suspend outside of client
 
 defaultRightClick = {F9}
-defaultWeaponSwap = {F10}
+defaultLeftClick  = {F10}
+defaultWeaponSwap = {F11}
 hotkeyDelay       := 1     ; in milliseconds
 weaponSwapDelay   := 500   ; in milliseconds
 
@@ -72,114 +141,97 @@ weaponSwapDelay   := 500   ; in milliseconds
 ;  QWER
 ;  ============================================================================
 
-;  Press [Q], click [RMB], swap to defaultRightClick
+;  Press [Q], hold [RMB], swap to defaultRightClick
 Q::
-   if ( not GetKeyState("RButton" , "P") )
-      Send {F1}
-      Sleep, hotkeyDelay
+   Send {F1}
+   while ( GetKeyState("Q" , "P") )
       Click down right
-      Click up right
-      Send %defaultRightClick%
-      if (keyDelays.hasKey("Q") && soundMaps.hasKey("Q"))
-         QueueSound(keyDelays["Q"], soundMaps["Q"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("Q") && soundMaps.hasKey("Q"))
+      QueueSound(keyDelays["Q"], soundMaps["Q"])
 return
 
-;  Press [W], click [RMB], swap to defaultRightClick
+;  Press [W], hold [RMB], swap to defaultRightClick
 W::
-   if ( not GetKeyState("RButton" , "P") )
-      Send {F2}
-      Sleep, hotkeyDelay
+   Send {F2}
+   while ( GetKeyState("W" , "P") )
       Click down right
-      Click up right
-      Send %defaultRightClick%
-      if (keyDelays.hasKey("W") && soundMaps.hasKey("W"))
-         QueueSound(keyDelays["W"], soundMaps["W"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("W") && soundMaps.hasKey("W"))
+      QueueSound(keyDelays["W"], soundMaps["W"])
 return
 
-;  Press [E], click [RMB], swap to defaultRightClick
+;  Press [E], hold [RMB], swap to defaultRightClick
 E::
-   if ( not GetKeyState("RButton" , "P") )
-      Send {F3}
-      Sleep, hotkeyDelay
+   Send {F3}
+   while ( GetKeyState("E" , "P") )
       Click down right
-      Click up right
-      Send %defaultRightClick%
-      if (keyDelays.hasKey("E") && soundMaps.hasKey("E"))
-         QueueSound(keyDelays["E"], soundMaps["E"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("E") && soundMaps.hasKey("E"))
+      QueueSound(keyDelays["E"], soundMaps["E"])
 return
 
 ;  Press [R], click [RMB], swap to defaultRightClick
 R::
-   if ( not GetKeyState("RButton" , "P") )
-      Send {F4}
-      Sleep, hotkeyDelay
+   Send {F4}
+   while ( GetKeyState("R" , "P") )
       Click down right
-      Click up right
-      Send %defaultRightClick%
-      if (keyDelays.hasKey("R") && soundMaps.hasKey("R"))
-         QueueSound(keyDelays["R"], soundMaps["R"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("R") && soundMaps.hasKey("R"))
+      QueueSound(keyDelays["R"], soundMaps["R"])
 return
 
 ;  ============================================================================
 ;  ASDF
 ;  ============================================================================
 
-;  Note: The keys [A] and [S] include a weapon swap before and after the cast,
-;        adding about a half-second to the time you're locked in one place.
-
-;  Weapon swap, Press [A], click [RMB], wait for animation, weapon swap
+;  Press [A], hold [RMB], swap to defaultRightClick
 A::
-   if ( not GetKeyState("RButton" , "P") )
-      Send %defaultWeaponSwap%
-      Sleep, hotkeyDelay
-      Send {F5}
-      Sleep, hotkeyDelay
+   Send {F5}
+   while ( GetKeyState("A" , "P") )
       Click down right
-      Click up right
-      Sleep, weaponSwapDelay
-      Send %defaultWeaponSwap%
-      if (keyDelays.hasKey("A") && soundMaps.hasKey("A"))
-         QueueSound(keyDelays["A"], soundMaps["A"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("A") && soundMaps.hasKey("A"))
+      QueueSound(keyDelays["A"], soundMaps["A"])
 return
 
-;  Weapon swap, Press [S], click [RMB], wait for animation, weapon swap
+;  Press [S], hold [RMB], swap to defaultRightClick
 S::
-   if ( not GetKeyState("RButton" , "P") )
-      Send %defaultWeaponSwap%
-      Sleep, hotkeyDelay
-      Send {F6}
-      Sleep, hotkeyDelay
+   Send {F6}
+   while ( GetKeyState("S" , "P") )
       Click down right
-      Click up right
-      Sleep, weaponSwapDelay
-      Send %defaultWeaponSwap%
-      if (keyDelays.hasKey("S") && soundMaps.hasKey("S"))
-         QueueSound(keyDelays["S"], soundMaps["S"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("S") && soundMaps.hasKey("S"))
+      QueueSound(keyDelays["S"], soundMaps["S"])
 return
 
-;  Press [D], click [RMB], swap to defaultRightClick
+;  Press [D], hold [RMB], swap to defaultRightClick
 D::
-   if ( not GetKeyState("RButton" , "P") )
-      Send {F7}
-      Sleep, hotkeyDelay
+   Send {F7}
+   while ( GetKeyState("D" , "P") )
       Click down right
-      Click up right
-      Send %defaultRightClick%
-      if (keyDelays.hasKey("D") && soundMaps.hasKey("D"))
-         QueueSound(keyDelays["D"], soundMaps["D"])
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("D") && soundMaps.hasKey("D"))
+      QueueSound(keyDelays["D"], soundMaps["D"])
 return
 
-;  Press [F], click [RMB], swap to defaultRightClick
+;  Press [F], hold [RMB], swap to defaultRightClick
 F::
-   if ( not GetKeyState("RButton" , "P") )
-      Send {F8}
-      Sleep, hotkeyDelay
+   Send {F8}
+   while ( GetKeyState("F" , "P") )
       Click down right
-      Click up right
-      Send %defaultRightClick%
-      if (keyDelays.hasKey("F") && soundMaps.hasKey("F"))
-            QueueSound(keyDelays["F"], soundMaps["F"])
-    return
+   Click up right
+   Send %defaultRightClick%
+   if (keyDelays.hasKey("F") && soundMaps.hasKey("F"))
+      QueueSound(keyDelays["F"], soundMaps["F"])
+return
 
 ;  ============================================================================
 ;  Utility functions
